@@ -134,7 +134,7 @@ func main() {
 		log.Fatalf("Failed to create vault client %s", err)
 	}
 
-	signalCh := make(chan os.Signal)
+	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh,
 		syscall.SIGINT,
 		syscall.SIGTERM,

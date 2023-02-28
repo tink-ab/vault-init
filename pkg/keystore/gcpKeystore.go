@@ -26,11 +26,13 @@ func NewGcpKeystore(gcsBucketName string, kmsKeyID string) (*GcpKeystore, error)
 	kmsCtx, kmsCtxCancel := context.WithCancel(context.Background())
 	kmsClient, err := google.DefaultClient(kmsCtx, "https://www.googleapis.com/auth/cloudkms")
 	if err != nil {
+		kmsCtxCancel()
 		return nil, err
 	}
 
 	kmsService, err := cloudkms.New(kmsClient)
 	if err != nil {
+		kmsCtxCancel()
 		return nil, err
 	}
 
@@ -43,6 +45,7 @@ func NewGcpKeystore(gcsBucketName string, kmsKeyID string) (*GcpKeystore, error)
 	)
 	if err != nil {
 		storageCtxCancel()
+		kmsCtxCancel()
 		return nil, err
 	}
 
