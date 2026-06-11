@@ -36,6 +36,9 @@ type AwsConfig struct {
 
 func createAwsSession(config *AwsConfig) *session.Session {
 	if config.Endpoint != "" {
+		if !isLoopbackEndpoint(config.Endpoint) {
+			log.Fatalf("AWS_ENDPOINT must be a loopback address (localhost/127.0.0.1) for local testing only, got: %s", config.Endpoint)
+		}
 		return session.Must(session.NewSession(&aws.Config{
 			Endpoint:         &config.Endpoint,
 			S3ForcePathStyle: aws.Bool(true),
@@ -43,6 +46,14 @@ func createAwsSession(config *AwsConfig) *session.Session {
 	}
 
 	return session.Must(session.NewSession())
+}
+
+func isLoopbackEndpoint(endpoint string) bool {
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+	endpoint = strings.TrimPrefix(endpoint, "https://")
+	host := strings.Split(endpoint, ":")[0]
+	host = strings.Split(host, "/")[0]
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
 func waitUntilValidSession(config *AwsConfig) (*session.Session, error) {
