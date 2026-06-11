@@ -3,8 +3,6 @@ package keystore
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"path"
@@ -16,18 +14,17 @@ import (
 )
 
 type AwsS3Keystore struct {
-	encryptionKey    string
-	encryptionKeyMD5 string
-	bucketName       string
-	bucketPath       string
-	s3Service        *s3.S3
+	kmsKeyID   string
+	bucketName string
+	bucketPath string
+	s3Service  *s3.S3
 }
 
 type AwsS3KeystoreConfig struct {
-	AwsConfig     *AwsConfig
-	EncryptionKey string
-	BucketName    string
-	BucketPath    string
+	AwsConfig  *AwsConfig
+	KmsKeyID   string
+	BucketName string
+	BucketPath string
 }
 
 func NewAwsS3Keystore(config *AwsS3KeystoreConfig) (*AwsS3Keystore, error) {
@@ -35,18 +32,14 @@ func NewAwsS3Keystore(config *AwsS3KeystoreConfig) (*AwsS3Keystore, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	s3Service := s3.New(awsSession)
 
-	md5Sum := md5.Sum([]byte(config.EncryptionKey))
-	encryptionKeyMD5 := base64.StdEncoding.EncodeToString(md5Sum[:])
-
 	return &AwsS3Keystore{
-		encryptionKey:    config.EncryptionKey,
-		encryptionKeyMD5: encryptionKeyMD5,
-		bucketName:       config.BucketName,
-		bucketPath:       config.BucketPath,
-		s3Service:        s3Service,
+		kmsKeyID:   config.KmsKeyID,
+		bucketName: config.BucketName,
+		bucketPath: config.BucketPath,
+		s3Service:  s3Service,
 	}, nil
 }
 
@@ -84,11 +77,8 @@ func (keystore *AwsS3Keystore) EncryptAndWrite(initResponse *api.InitResponse) e
 
 func (keystore *AwsS3Keystore) ReadAndDecrypt() (*api.InitResponse, error) {
 	getObjectInput := s3.GetObjectInput{
-		Bucket:               &keystore.bucketName,
-		Key:                  aws.String(keystore.getBucketPath(unsealKeysFile)),
-		SSECustomerKey:       &keystore.encryptionKey,
-		SSECustomerKeyMD5:    &keystore.encryptionKeyMD5,
-		SSECustomerAlgorithm: aws.String(s3.ServerSideEncryptionAes256),
+		Bucket: &keystore.bucketName,
+		Key:    aws.String(keystore.getBucketPath(unsealKeysFile)),
 	}
 	getObjectOutput, err := keystore.s3Service.GetObjectWithContext(context.Background(), &getObjectInput)
 	if err != nil {
@@ -109,9 +99,8 @@ func (keystore *AwsS3Keystore) s3Put(name string, body io.ReadSeeker) error {
 		Bucket:               &keystore.bucketName,
 		Key:                  &name,
 		Body:                 body,
-		SSECustomerKey:       &keystore.encryptionKey,
-		SSECustomerKeyMD5:    &keystore.encryptionKeyMD5,
-		SSECustomerAlgorithm: aws.String(s3.ServerSideEncryptionAes256),
+		ServerSideEncryption: aws.String("aws:kms"),
+		SSEKMSKeyId:          &keystore.kmsKeyID,
 	}
 
 	_, err := keystore.s3Service.PutObjectWithContext(context.Background(), &putObjectInput)

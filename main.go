@@ -74,10 +74,10 @@ func createAwsKeystore() *keystore.AwsKeystore {
 
 func createAwsS3Keystore() *keystore.AwsS3Keystore {
 	s3Keystore, err := keystore.NewAwsS3Keystore(&keystore.AwsS3KeystoreConfig{
-		AwsConfig:     createAwsConfig(),
-		EncryptionKey: getEnv("AWS_ENCRYPTION_KEY"),
-		BucketName:    getEnv("AWS_BUCKET_NAME"),
-		BucketPath:    getEnv("AWS_BUCKET_PATH"),
+		AwsConfig:  createAwsConfig(),
+		KmsKeyID:   getEnv("AWS_KMS_KEY_ID"),
+		BucketName: getEnv("AWS_BUCKET_NAME"),
+		BucketPath: getEnv("AWS_BUCKET_PATH"),
 	})
 	if err != nil {
 		log.Fatalf("failed to initialize aws store: %v", err)
