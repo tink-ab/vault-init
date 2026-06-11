@@ -13,6 +13,12 @@ var (
 	rootTokenFile  = "vault/root-token"
 )
 
+// UnsealData contains only the keys needed for auto-unseal, without the root token.
+type UnsealData struct {
+	Keys    []string `json:"keys"`
+	KeysB64 []string `json:"keys_base64"`
+}
+
 type Keystore interface {
 	Close()
 	EncryptAndWrite(*api.InitResponse) error

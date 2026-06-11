@@ -71,7 +71,12 @@ func (keystore GcpKeystore) EncryptAndWrite(initResponse *api.InitResponse) erro
 		return err
 	}
 
-	initResponseData, err := json.Marshal(&initResponse)
+	// Store only the threshold number of unseal keys (no root token)
+	unsealData := UnsealData{
+		Keys:    initResponse.Keys[:3],
+		KeysB64: initResponse.KeysB64[:3],
+	}
+	initResponseData, err := json.Marshal(&unsealData)
 	if err != nil {
 		return err
 	}
