@@ -90,21 +90,29 @@ func (keystore GcpKeystore) EncryptAndWrite(initResponse *api.InitResponse) erro
 	// Save the encrypted unseal keys.
 	ctx := context.Background()
 	unsealKeysObject := bucket.Object("unseal-keys.json.enc").NewWriter(ctx)
-	defer unsealKeysObject.Close()
 
 	_, err = unsealKeysObject.Write([]byte(unsealKeysEncryptResponse.Ciphertext))
 	if err != nil {
-		log.Println(err)
+		unsealKeysObject.Close()
+		return err
+	}
+
+	if err = unsealKeysObject.Close(); err != nil {
+		return err
 	}
 
 	log.Printf("Unseal keys written to gs://%s/%s", keystore.gcsBucketName, "unseal-keys.json.enc")
 
 	// Save the encrypted root token.
 	rootTokenObject := bucket.Object("root-token.enc").NewWriter(ctx)
-	defer rootTokenObject.Close()
 
 	_, err = rootTokenObject.Write([]byte(rootTokenEncryptResponse.Ciphertext))
 	if err != nil {
+		rootTokenObject.Close()
+		return err
+	}
+
+	if err = rootTokenObject.Close(); err != nil {
 		return err
 	}
 
