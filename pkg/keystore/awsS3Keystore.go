@@ -59,8 +59,12 @@ func (keystore *AwsS3Keystore) Close() {
 }
 
 func (keystore *AwsS3Keystore) EncryptAndWrite(initResponse *api.InitResponse) error {
-	// Save and encrypted the unseal keys
-	initResponseData, err := json.Marshal(&initResponse)
+	// Save only the threshold number of unseal keys (no root token)
+	unsealData := UnsealData{
+		Keys:    initResponse.Keys[:3],
+		KeysB64: initResponse.KeysB64[:3],
+	}
+	initResponseData, err := json.Marshal(&unsealData)
 	if err != nil {
 		return err
 	}
@@ -69,7 +73,7 @@ func (keystore *AwsS3Keystore) EncryptAndWrite(initResponse *api.InitResponse) e
 		return err
 	}
 
-	// Save and encrypted the root token
+	// Save the root token separately
 	rootTokenData, err := json.Marshal(&initResponse.RootToken)
 	if err != nil {
 		return err

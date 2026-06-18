@@ -29,7 +29,7 @@ const (
 
 func getEnv(name string) string {
 	value := os.Getenv(name)
-	if name == "" {
+	if value == "" {
 		log.Fatalf("%s must be set and not empty", name)
 	}
 	return value

@@ -36,6 +36,9 @@ type AwsConfig struct {
 
 func createAwsSession(config *AwsConfig) *session.Session {
 	if config.Endpoint != "" {
+		if !isLoopbackEndpoint(config.Endpoint) {
+			log.Fatalf("AWS_ENDPOINT must be a loopback address (localhost/127.0.0.1) for local testing only, got: %s", config.Endpoint)
+		}
 		return session.Must(session.NewSession(&aws.Config{
 			Endpoint:         &config.Endpoint,
 			S3ForcePathStyle: aws.Bool(true),
@@ -43,6 +46,14 @@ func createAwsSession(config *AwsConfig) *session.Session {
 	}
 
 	return session.Must(session.NewSession())
+}
+
+func isLoopbackEndpoint(endpoint string) bool {
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+	endpoint = strings.TrimPrefix(endpoint, "https://")
+	host := strings.Split(endpoint, ":")[0]
+	host = strings.Split(host, "/")[0]
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
 func waitUntilValidSession(config *AwsConfig) (*session.Session, error) {
@@ -83,8 +94,12 @@ func (keystore AwsKeystore) Close() {
 }
 
 func (keystore AwsKeystore) EncryptAndWrite(initResponse *api.InitResponse) error {
-	// Save and encrypted the unseal keys
-	initResponseData, err := json.Marshal(&initResponse)
+	// Save only the threshold number of unseal keys (no root token)
+	unsealData := UnsealData{
+		Keys:    initResponse.Keys[:3],
+		KeysB64: initResponse.KeysB64[:3],
+	}
+	initResponseData, err := json.Marshal(&unsealData)
 	if err != nil {
 		return err
 	}
@@ -93,7 +108,7 @@ func (keystore AwsKeystore) EncryptAndWrite(initResponse *api.InitResponse) erro
 		return err
 	}
 
-	// Save and encrypted the root token
+	// Save the root token separately
 	rootTokenData, err := json.Marshal(&initResponse.RootToken)
 	if err != nil {
 		return err
